@@ -4,7 +4,6 @@ import axios from 'axios';
 import currency_pkg from 'currencies-map';
 const {CODES, Currencies} = currency_pkg;
 import cryptocurrencies from 'cryptocurrencies';
-// import emojis from 'emojis-list';
 import {currencyList, currencyActions} from './entities/currency-list.js';
 import {cryptoList, cryptoActions} from './entities/crypto-list.js';
 import {formatCurrencies, formatCryptocurrencies} from './helpers/format.js';
@@ -14,29 +13,6 @@ const bot = new Telegraf(config.BOT_TOKEN);
 
 let currentCurrency, currentCrypto = '';
 let messages = [];
-
-async function clearMessages(chat_id) {
-    try {
-        await Promise.all(messages.map(msg => bot.telegram.deleteMessage(chat_id, msg.message_id)));
-        messages = [];
-
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-async function deleteLastMessage(chat_id) {
-    const lastMessage = messages.pop();
-    if (!lastMessage) return;
-
-    try {        
-        await bot.telegram.deleteMessage(chat_id, lastMessage.message_id);        
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-
 
 bot.telegram.setMyCommands([
     {command: 'start', description: 'Start Bot'},
@@ -77,9 +53,7 @@ const sendStartMessage = async ctx => {
 bot.action('choose currency', async ctx => {
     try {
         await clearMessages(ctx.chat.id);
-
-        const priceMessage = '💵 Select one of the target currencies below';
-    
+        const priceMessage = '💵 Select one of the target currencies below';    
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
             {
                 reply_markup: {
@@ -103,8 +77,6 @@ bot.action(currencyActions, async ctx => {
         await clearMessages(ctx.chat.id);
 
         currentCurrency = ctx.match.input.split('-')[1];
-        console.log(currentCurrency);
-
         const priceMessage = `Select one of the cryptocurrencies below to show info in\n<b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>`;
         
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
@@ -129,15 +101,12 @@ bot.action(currencyActions, async ctx => {
 
 bot.action(cryptoActions, async ctx => {
     await clearMessages(ctx.chat.id);
-
     currentCrypto = ctx.match.input.split('-')[1];
-    console.log(currentCrypto);
     
     try {
         const res = await axios
         .get(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${currentCrypto}&tsyms=${currentCurrency}&api_key=${config.CRYPTO_API_KEY}`);
-        const crypto_data = res.data.DISPLAY[currentCrypto][currentCurrency];
-        // console.log('res.data.RAW', res.data.RAW)///////////////////////
+        const crypto_data = res.data.DISPLAY[currentCrypto][currentCurrency];      
         
         const infoMessage = `
 Cryptocurrency: <b>${cryptocurrencies[currentCrypto]} (${currentCrypto})</b>
@@ -171,7 +140,6 @@ Currency: <b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>
 bot.action('info', async ctx => {
     try {
         ctx.answerCbQuery();
-
         const message = await bot.telegram.sendMessage(ctx.chat.id, 'Bot Info',
             {
                 reply_markup: {
@@ -220,8 +188,30 @@ bot.hears('Remove Keyboard', async ctx => {
             }
         }
     );
+
     messages.push(message);
     await deleteLastMessage(ctx.chat.id);
 });
 
 bot.launch();
+
+async function clearMessages(chat_id) {
+    try {
+        await Promise.all(messages.map(msg => bot.telegram.deleteMessage(chat_id, msg.message_id)));
+        messages = [];
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+async function deleteLastMessage(chat_id) {
+    const lastMessage = messages.pop();
+    if (!lastMessage) return;
+
+    try {        
+        await bot.telegram.deleteMessage(chat_id, lastMessage.message_id);        
+    } catch (error) {
+        console.log(error);
+    }
+}
