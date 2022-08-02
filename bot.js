@@ -1,44 +1,21 @@
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import axios from 'axios';
-import emojis from 'emojis-list';
-
 import currency_pkg from 'currencies-map';
 const {CODES, Currencies} = currency_pkg;
 import cryptocurrencies from 'cryptocurrencies';
+// import emojis from 'emojis-list';
+import {currencyList, currencyActions} from './entities/currency-list.js';
+import {cryptoList, cryptoActions} from './entities/crypto-list.js';
+import {formatCurrencies, formatCryptocurrencies} from './helpers/format.js';
+
 
 const bot = new Telegraf(config.BOT_TOKEN);
 
-const currencyList = [
-    {flag: '🇺🇸', code: 'USD'},
-    {flag: '🇪🇺', code: 'EUR'},
-    {flag: '🇬🇧', code: 'GBP'},
-    {flag: '🇺🇦', code: 'UAH'},
-    {flag: '🇵🇱', code: 'PLN'},
-    {flag: '🇦🇺', code: 'AUD'},
-    {flag: '🇨🇳', code: 'CHY'},
-    {flag: '🇯🇵', code: 'JPY'},
-    {flag: '🇦🇲', code: 'AMD'},
-    {flag: '🇧🇬', code: 'BGN'},
-    {flag: '🇧🇷', code: 'BRL'},
-    {flag: '🇨🇦', code: 'CAD'},
-    {flag: '🇨🇿', code: 'CZK'},
-    {flag: '🇭🇺', code: 'HUF'},
-    {flag: '🇲🇩', code: 'MDL'},
-    {flag: '🇷🇴', code: 'RON'},
-    {flag: '🇹🇷', code: 'TRY'},
-    {flag: '🇰🇿', code: 'KZT'},
-    {flag: '🇷🇺', code: 'RUB'},
-    {flag: '🇧🇾', code: 'BYN'},
-];    
-const currencyActions = currencyList.map(currency => `currency-${currency.code}`);
-
-const cryptoList = ['BTC', 'ETH', 'USDT', 'LTC', 'USDC', 'BNB', 'XRP', 'DOGE', 'TRX'];
-const cryptoActions = cryptoList.map(crypto => `crypto-${crypto}`);
-let currency, crypto = '';
-
+let currentCurrency, currentCrypto = '';
 let messages = [];
-const clearMessages = async (chat_id) => {
+
+async function clearMessages(chat_id) {
     try {
         await Promise.all(messages.map(msg => bot.telegram.deleteMessage(chat_id, msg.message_id)));
         messages = [];
@@ -48,7 +25,7 @@ const clearMessages = async (chat_id) => {
     }
 }
 
-const deleteLastMessage = async (chat_id) => {
+async function deleteLastMessage(chat_id) {
     const lastMessage = messages.pop();
     if (!lastMessage) return;
 
@@ -59,32 +36,7 @@ const deleteLastMessage = async (chat_id) => {
     }
 }
 
-function formatCurrencies(currencies, columns) {
-    const resultArray = [];
-    let rowArray = [];
-    for (let i = 0; i < currencies.length; i++) {
-        rowArray.push({text: `${currencies[i].flag}${currencies[i].code}`, callback_data: `currency-${currencies[i].code}`});
-        if ((i + 1) % columns === 0 || (i + 1) === currencies.length) {
-            resultArray.push(rowArray);
-            rowArray = [];
-        }
-    }
-    return resultArray;
-}
 
-function formatCryptoCurrencies(cryptoCurrencies, columns) {
-    const resultArray = [];
-    let rowArray = [];
-    for (let i = 0; i < cryptoCurrencies.length; i++) {
-        rowArray.push({text: `${cryptoCurrencies[i]}`, callback_data: `crypto-${cryptoCurrencies[i]}`});
-        
-        if ((i + 1) % columns === 0 || (i + 1) === cryptoCurrencies.length) {
-            resultArray.push(rowArray);
-            rowArray = [];
-        }
-    }
-    return resultArray;
-}
 
 bot.telegram.setMyCommands([
     {command: 'start', description: 'Start Bot'},
@@ -150,17 +102,17 @@ bot.action(currencyActions, async ctx => {
     try {
         await clearMessages(ctx.chat.id);
 
-        currency = ctx.match.input.split('-')[1];
-        console.log(currency);
+        currentCurrency = ctx.match.input.split('-')[1];
+        console.log(currentCurrency);
 
-        const priceMessage = `Select one of the cryptocurrencies below to show info in\n<b>${Currencies.names.get(currency)} (${currency})</b>`;
+        const priceMessage = `Select one of the cryptocurrencies below to show info in\n<b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>`;
         
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
             {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        ...formatCryptoCurrencies(cryptoList, 3),                        
+                        ...formatCryptocurrencies(cryptoList, 3),                        
                         [{text: '🔙 Back to Currency Menu', callback_data: 'choose currency'}],
                     ]
                 }
@@ -178,18 +130,18 @@ bot.action(currencyActions, async ctx => {
 bot.action(cryptoActions, async ctx => {
     await clearMessages(ctx.chat.id);
 
-    crypto = ctx.match.input.split('-')[1];
-    console.log(crypto);
+    currentCrypto = ctx.match.input.split('-')[1];
+    console.log(currentCrypto);
     
     try {
         const res = await axios
-        .get(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${crypto}&tsyms=${currency}&api_key=${config.CRYPTO_API_KEY}`);
-        const crypto_data = res.data.DISPLAY[crypto][currency];
+        .get(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${currentCrypto}&tsyms=${currentCurrency}&api_key=${config.CRYPTO_API_KEY}`);
+        const crypto_data = res.data.DISPLAY[currentCrypto][currentCurrency];
         // console.log('res.data.RAW', res.data.RAW)///////////////////////
         
         const infoMessage = `
-Cryptocurrency: <b>${cryptocurrencies[crypto]} (${crypto})</b>
-Currency: <b>${Currencies.names.get(currency)} (${currency})</b>
+Cryptocurrency: <b>${cryptocurrencies[currentCrypto]} (${currentCrypto})</b>
+Currency: <b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>
     Price: ${crypto_data.PRICE}
     Open: ${crypto_data.OPENDAY}
     High: ${crypto_data.HIGHDAY}
@@ -203,7 +155,7 @@ Currency: <b>${Currencies.names.get(currency)} (${currency})</b>
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        [{text: '🔙 Back to Crypto Menu', callback_data: `currency-${currency}`}]
+                        [{text: '🔙 Back to Crypto Menu', callback_data: `currency-${currentCurrency}`}]
                     ]
                 }
             }    
@@ -273,4 +225,3 @@ bot.hears('Remove Keyboard', async ctx => {
 });
 
 bot.launch();
-
