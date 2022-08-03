@@ -8,6 +8,43 @@ import {currencyList, currencyActions} from './entities/currency-list.js';
 import {cryptoList, cryptoActions} from './entities/crypto-list.js';
 import {formatCurrencies, formatCryptocurrencies} from './helpers/format.js';
 
+import { readFile, writeFile, stat } from 'fs/promises';
+import fs from 'fs';
+import path from 'path';
+
+// import { createRequire } from "module"; // Bring in the ability to create the 'require' method
+// const require = createRequire(import.meta.url); // construct the require method
+// const readJsonSync = require('read-json-sync');
+const locale = 'en';
+
+const t = ([text]) => {
+    const file_path = config.TRANSLATION_JSON_PATH;
+    if (!fs.existsSync(file_path)) {
+        fs.writeFileSync(file_path, JSON.stringify([]), {flag: 'w'})
+    }
+        const file_data = fs.readFileSync(file_path);
+        const translations = JSON.parse(file_data.toString());
+        const translation = translations.find(trans => trans.en === text)
+        if(!translation) {
+            translations.push({en: text});
+            fs.writeFileSync(file_path, JSON.stringify(translations), {flag: 'w'})
+        }
+        console.log(translations);
+
+
+    return translation[locale] || text;
+}
+
+async function changeLocale() {
+    // const fileContents = await fs.promises.readFile('./dist/uk.po.json');
+    
+    // console.log()
+    // const uk_locale_data = JSON.parse(fileContents.toString())
+    
+    // useLocale(uk);
+}
+
+changeLocale();
 
 const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -15,11 +52,11 @@ let currentCurrency, currentCrypto = '';
 let messages = [];
 
 bot.telegram.setMyCommands([
-    {command: 'start', description: 'Start Bot'},
+    {command: 'start', description: t`Start Bot`},
 ])
 
 bot.command('start', async ctx => {
-    bot.telegram.send
+    bot.telegram.sendStartMessage(ctx);
     messages.push(ctx.message);
     await sendStartMessage(ctx);      
 });
@@ -31,14 +68,14 @@ bot.action('start', async ctx => {
 const sendStartMessage = async ctx => {
     try {
         await clearMessages(ctx.chat.id);
-        const startMessage = '🌎 Welcome, this bot gives you cryptocurrency information';
+        const startMessage = '🌎 ' + t`Welcome, this bot gives you cryptocurrency information`;
         const message = await bot.telegram.sendMessage(ctx.chat.id, startMessage,
             {
                 reply_markup: {
                     inline_keyboard: [
-                        [{text: '🪙 Crypto Prices', callback_data: 'choose currency'}],
-                        [{text: '📉 CoinMarketCap', url: 'https://coinmarketcap.com/'}],
-                        [{text: 'ℹ️ Bot Info', callback_data: 'info'}],
+                        [{text: '🪙 ' + t`Crypto Prices`, callback_data: 'choose currency'}],
+                        [{text: '📉 ' + t`CoinMarketCap`, url: 'https://coinmarketcap.com/'}],
+                        [{text: 'ℹ️ ' + t`Bot Info`, callback_data: 'info'}],
                     ]
                 }
             }
@@ -53,13 +90,13 @@ const sendStartMessage = async ctx => {
 bot.action('choose currency', async ctx => {
     try {
         await clearMessages(ctx.chat.id);
-        const priceMessage = '💵 Select one of the target currencies below';    
+        const priceMessage = '💵 ' + t`Select one of the target currencies below`;    
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
             {
                 reply_markup: {
                     inline_keyboard: [
                         ...formatCurrencies(currencyList, 4),
-                        [{text: '🔙 Back to Main Menu', callback_data: 'start'}],
+                        [{text: '🔙 ' + t`Back to Main Menu`, callback_data: 'start'}],
                     ]
                 }
             }
@@ -77,7 +114,7 @@ bot.action(currencyActions, async ctx => {
         await clearMessages(ctx.chat.id);
 
         currentCurrency = ctx.match.input.split('-')[1];
-        const priceMessage = `Select one of the cryptocurrencies below to show info in\n<b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>`;
+        const priceMessage = t`Select one of the cryptocurrencies below to show info in` + `\n<b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>`;
         
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
             {
@@ -85,7 +122,7 @@ bot.action(currencyActions, async ctx => {
                 reply_markup: {
                     inline_keyboard: [
                         ...formatCryptocurrencies(cryptoList, 3),                        
-                        [{text: '🔙 Back to Currency Menu', callback_data: 'choose currency'}],
+                        [{text: '🔙 ' + t`Back to Currency Menu`, callback_data: 'choose currency'}],
                     ]
                 }
             }
@@ -108,23 +145,22 @@ bot.action(cryptoActions, async ctx => {
         .get(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${currentCrypto}&tsyms=${currentCurrency}&api_key=${config.CRYPTO_API_KEY}`);
         const crypto_data = res.data.DISPLAY[currentCrypto][currentCurrency];      
         
-        const infoMessage = `
-Cryptocurrency: <b>${cryptocurrencies[currentCrypto]} (${currentCrypto})</b>
-Currency: <b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>
-    Price: ${crypto_data.PRICE}
-    Open: ${crypto_data.OPENDAY}
-    High: ${crypto_data.HIGHDAY}
-    Low: ${crypto_data.LOWDAY}
-    Supply: ${crypto_data.SUPPLY}
-    Market Cap: ${crypto_data.MKTCAP}
-    `;
+        const infoMessage = t`
+Cryptocurrency: `+ `<b>${cryptocurrencies[currentCrypto]} (${currentCrypto})</b>\n` +
+t`Currency: ` + `<b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>\n  ` +
+    t`Price: ` + `${crypto_data.PRICE}\n  ` +
+    t`Open: ` + `${crypto_data.OPENDAY}\n  ` +
+    t`High: ` + `${crypto_data.HIGHDAY}\n  ` +
+    t`Low: ` + `${crypto_data.LOWDAY}\n  ` +
+    t`Supply: ` + `${crypto_data.SUPPLY}\n  ` + 
+    t`Market Cap: ` + `${crypto_data.MKTCAP}\n`;
                 
         const message = await bot.telegram.sendMessage(ctx.chat.id, infoMessage,
             {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        [{text: '🔙 Back to Crypto Menu', callback_data: `currency-${currentCurrency}`}]
+                        [{text: '🔙 ' + t`Back to Crypto Menu`, callback_data: `currency-${currentCurrency}`}]
                     ]
                 }
             }    
@@ -140,12 +176,12 @@ Currency: <b>${Currencies.names.get(currentCurrency)} (${currentCurrency})</b>
 bot.action('info', async ctx => {
     try {
         ctx.answerCbQuery();
-        const message = await bot.telegram.sendMessage(ctx.chat.id, 'Bot Info',
+        const message = await bot.telegram.sendMessage(ctx.chat.id, t`Bot Info`,
             {
                 reply_markup: {
                     keyboard: [
-                        [{text: 'Credits'}, {text: 'API'}],
-                        [{text: 'Remove Keyboard'}],
+                        [{text: t`Credits`}, {text: t`API`}],
+                        [{text: t`Remove Keyboard`}],
                     ],
                     resize_keyboard: true,
                     one_time_keyboard: false,
@@ -161,27 +197,27 @@ bot.action('info', async ctx => {
     
 });
 
-bot.hears('Credits', async ctx => {
+bot.hears(t`Credits`, async ctx => {
     messages.push(ctx.message);
     await deleteLastMessage(ctx.chat.id);
 
-    const message = await ctx.reply('This bot was made by @volodymyr198');
+    const message = await ctx.reply(t`This bot was made by @volodymyr198`);
     messages.push(message);
 });
 
-bot.hears('API', async ctx => {
+bot.hears(t`API`, async ctx => {
     messages.push(ctx.message);
     await deleteLastMessage(ctx.chat.id)
 
-    const message = await ctx.replyWithHTML('This bot uses <b>Cryptocompare API</b>');
+    const message = await ctx.replyWithHTML(t`This bot uses <b>Cryptocompare API</b>`);
     messages.push(message);
 });
 
-bot.hears('Remove Keyboard', async ctx => {
+bot.hears(t`Remove Keyboard`, async ctx => {
     messages.push(ctx.message);
     await deleteLastMessage(ctx.chat.id);
 
-    const message = await bot.telegram.sendMessage(ctx.chat.id, 'Removed keyboard',
+    const message = await bot.telegram.sendMessage(ctx.chat.id, t`Removed keyboard`,
         {
             reply_markup: {
                 remove_keyboard: true,
