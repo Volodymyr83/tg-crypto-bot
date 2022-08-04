@@ -2,7 +2,7 @@ import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import axios from 'axios';
 import currency_pkg from 'currencies-map';
-const {CODES, Currencies} = currency_pkg;
+const {Currencies} = currency_pkg;
 import cryptocurrencies from 'cryptocurrencies';
 import {currencyList, currencyActions} from './entities/currency-list.js';
 import {cryptoList, cryptoActions} from './entities/crypto-list.js';
@@ -15,7 +15,7 @@ import fs from 'fs';
 
 export const usersData = new Map();
 export const file_path = config.TRANSLATION_JSON_PATH;
-// console.log(CODES)
+
 if (!fs.existsSync(file_path)) {
     fs.writeFileSync(file_path, JSON.stringify([]), {flag: 'w'})
 }
