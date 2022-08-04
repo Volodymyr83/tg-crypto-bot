@@ -1,26 +1,31 @@
 export function formatCurrencies(currencies, columns) {
-    const resultArray = [];
-    let rowArray = [];
-    for (let i = 0; i < currencies.length; i++) {
-        rowArray.push({text: `${currencies[i].flag}${currencies[i].code}`, callback_data: `currency-${currencies[i].code}`});
-        if ((i + 1) % columns === 0 || (i + 1) === currencies.length) {
-            resultArray.push(rowArray);
-            rowArray = [];
-        }
-    }
-    return resultArray;
+    return format(currencies, columns, currency => (
+        {text: `${currency.flag} ${currency.code}`, callback_data: `currency-${currency.code}`}
+    ));
 }
 
 export function formatCryptocurrencies(cryptoCurrencies, columns) {
+    return format(cryptoCurrencies, columns, crypto => (
+        {text: `${crypto}`, callback_data: `crypto-${crypto}`}
+    ));
+}
+
+export function formatLocales(locales, columns) {
+    return format(locales, columns, locale => (
+        {text: `${locale.flag} ${locale.text}`, callback_data: `locale-${locale.code}`}
+    ));
+}
+
+export function format(dataArray, columns, callback) {
     const resultArray = [];
     let rowArray = [];
-    for (let i = 0; i < cryptoCurrencies.length; i++) {
-        rowArray.push({text: `${cryptoCurrencies[i]}`, callback_data: `crypto-${cryptoCurrencies[i]}`});
-        
-        if ((i + 1) % columns === 0 || (i + 1) === cryptoCurrencies.length) {
+    for (let i = 0; i < dataArray.length; i++) {
+        rowArray.push(callback(dataArray[i]));
+        if ((i + 1) % columns === 0 || (i + 1) === dataArray.length) {
             resultArray.push(rowArray);
             rowArray = [];
         }
     }
-    return resultArray;
+    
+    return resultArray;    
 }

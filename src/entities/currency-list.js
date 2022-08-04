@@ -5,7 +5,7 @@ export const currencyList = [
     {flag: '🇺🇦', code: 'UAH'},
     {flag: '🇵🇱', code: 'PLN'},
     {flag: '🇦🇺', code: 'AUD'},
-    {flag: '🇨🇳', code: 'CHY'},
+    {flag: '🇨🇳', code: 'CNY'},
     {flag: '🇯🇵', code: 'JPY'},
     {flag: '🇦🇲', code: 'AMD'},
     {flag: '🇧🇬', code: 'BGN'},
