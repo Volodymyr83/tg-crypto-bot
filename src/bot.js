@@ -25,12 +25,13 @@ const bot = new Telegraf(config.BOT_TOKEN);
 
 bot.telegram.setMyCommands([
     {command: 'start', description: t(`Start Bot`)},
-])
+]);
 
 bot.use((ctx, next) => {
-    ctx.user = getOrCreateUser(ctx.from.id);    
+    ctx.user = getOrCreateUser(ctx.from.id);
+    console.log(ctx.user)////////////////
     next();
-})
+});
 
 bot.command('start', async ctx => {
     addUserMessage(ctx, ctx.message);
@@ -118,7 +119,7 @@ bot.action(localeActions, async ctx => {
         console.log(error);
         ctx.answerCbQuery(error.message);
     }
-})
+});
 
 bot.action(currencyActions, async ctx => {
     try {
@@ -147,7 +148,7 @@ bot.action(currencyActions, async ctx => {
         console.log(error);
         ctx.answerCbQuery(error.message);
     }
-})
+});
 
 bot.action(cryptoActions, async ctx => {
     await clearMessages(ctx);
@@ -187,7 +188,7 @@ t(`Currency: `, ctx) + ` <b>${t(Currencies.names.get(currentCurrency), ctx)} (${
         console.log(error);
         ctx.answerCbQuery(error.message);
     }
-})
+});
 
 bot.action('info', async ctx => {
     try {
