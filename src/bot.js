@@ -7,43 +7,33 @@ import cryptocurrencies from 'cryptocurrencies';
 import {currencyList, currencyActions} from './entities/currency-list.js';
 import {cryptoList, cryptoActions} from './entities/crypto-list.js';
 import {locales, localeActions} from './entities/locale-list.js';
+import { t } from "./services/translate.js";
 import {formatCurrencies, formatCryptocurrencies, formatLocales} from './helpers/format.js';
 import { makeLocaleTriggers } from "./helpers/triggers.js";
-import { t } from "./helpers/translate.js";
-import { changeLocale } from "./helpers/localize.js";
-import fs from 'fs';
+import {
+    getOrCreateUser,    
+    addUserMessage,
+    clearMessages,
+    deleteLastMessage,
+    changeLocale,
+    updateCurrentCrypto,
+    updateCurrentCurrency,
+} from "./services/user.js";
 
-export const usersData = new Map();
-export const file_path = config.TRANSLATION_JSON_PATH;
-
-if (!fs.existsSync(file_path)) {
-    fs.writeFileSync(file_path, JSON.stringify([]), {flag: 'w'})
-}
-const file_data = fs.readFileSync(file_path);
-export const translations = JSON.parse(file_data.toString());
 
 const bot = new Telegraf(config.BOT_TOKEN);
-
-let currentCurrency, currentCrypto = '';
-let messages = [];
 
 bot.telegram.setMyCommands([
     {command: 'start', description: t(`Start Bot`)},
 ])
 
 bot.use((ctx, next) => {
-    let user = usersData.get(ctx.from.id);
-    if (!user) {
-        user = {id: ctx.from.id, locale: 'en'};
-        usersData.set(ctx.from.id, user);
-    }
-    ctx.user = user;
-    // console.log(ctx.from)//////////
+    ctx.user = getOrCreateUser(ctx.from.id);    
     next();
 })
 
-bot.command('start', async ctx => {    
-    messages.push(ctx.message);
+bot.command('start', async ctx => {
+    addUserMessage(ctx, ctx.message);
     await sendStartMessage(ctx);      
 });
 
@@ -53,7 +43,7 @@ bot.action('start', async ctx => {
 
 const sendStartMessage = async ctx => {
     try {
-        await clearMessages(ctx.chat.id);
+        await clearMessages(ctx);
         const startMessage = '🌎  ' + t(`Welcome, this bot gives you cryptocurrency information`, ctx);
         const message = await bot.telegram.sendMessage(ctx.chat.id, startMessage,
             {
@@ -68,7 +58,7 @@ const sendStartMessage = async ctx => {
             }
         );
         
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
     }    
@@ -76,7 +66,7 @@ const sendStartMessage = async ctx => {
 
 bot.action('choose currency', async ctx => {
     try {
-        await clearMessages(ctx.chat.id);
+        await clearMessages(ctx);
         const priceMessage = '💵  ' + t(`Select one of the target currencies below`, ctx);    
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
             {
@@ -89,7 +79,7 @@ bot.action('choose currency', async ctx => {
             }
         );
 
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
         ctx.answerCbQuery(error.message);
@@ -98,7 +88,7 @@ bot.action('choose currency', async ctx => {
 
 bot.action('change locale', async ctx => {
     try {
-        await clearMessages(ctx.chat.id);
+        await clearMessages(ctx);
         const localesMessage = '🌐  ' + t(`Select language`, ctx);    
         const message = await bot.telegram.sendMessage(ctx.chat.id, localesMessage,
             {
@@ -111,7 +101,7 @@ bot.action('change locale', async ctx => {
             }
         );
 
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
         ctx.answerCbQuery(error.message);
@@ -120,7 +110,7 @@ bot.action('change locale', async ctx => {
 
 bot.action(localeActions, async ctx => {
     try {
-        await clearMessages(ctx.chat.id);
+        await clearMessages(ctx);
         const locale = ctx.match.input.split('-')[1];
         changeLocale(ctx, locale);
         await sendStartMessage(ctx);
@@ -132,10 +122,12 @@ bot.action(localeActions, async ctx => {
 
 bot.action(currencyActions, async ctx => {
     try {
-        await clearMessages(ctx.chat.id);
+        await clearMessages(ctx);
 
-        currentCurrency = ctx.match.input.split('-')[1];
-        console.log('currentCurrency', currentCurrency)//////////////
+        const currency = ctx.match.input.split('-')[1];
+        updateCurrentCurrency(ctx, currency);
+        const {currentCurrency} = ctx.user;
+        
         const priceMessage = t(`Select one of the cryptocurrencies below to show info in:\n`, ctx) + `<b>${t(Currencies.names.get(currentCurrency), ctx)} (${currentCurrency})</b>`;
         
         const message = await bot.telegram.sendMessage(ctx.chat.id, priceMessage,
@@ -150,7 +142,7 @@ bot.action(currencyActions, async ctx => {
             }
         );
 
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
         ctx.answerCbQuery(error.message);
@@ -158,10 +150,12 @@ bot.action(currencyActions, async ctx => {
 })
 
 bot.action(cryptoActions, async ctx => {
-    await clearMessages(ctx.chat.id);
-    currentCrypto = ctx.match.input.split('-')[1];
-    console.log('currentCrypto', currentCrypto)//////////////
-    console.log('currentCurrency', currentCurrency)//////////////
+    await clearMessages(ctx);
+
+    const crypto = ctx.match.input.split('-')[1];
+    updateCurrentCrypto(ctx, crypto);
+    const {currentCrypto, currentCurrency} = ctx.user;
+
     try {
         const res = await axios
         .get(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${currentCrypto}&tsyms=${currentCurrency}&api_key=${config.CRYPTO_API_KEY}`);
@@ -188,7 +182,7 @@ t(`Currency: `, ctx) + ` <b>${t(Currencies.names.get(currentCurrency), ctx)} (${
             }    
         );
 
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
         ctx.answerCbQuery(error.message);
@@ -211,7 +205,7 @@ bot.action('info', async ctx => {
             }
         );
 
-        messages.push(message);
+        addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
         ctx.answerCbQuery(error.message);
@@ -220,24 +214,24 @@ bot.action('info', async ctx => {
 });
 
 bot.hears(makeLocaleTriggers(`Credits`), async ctx => {
-    messages.push(ctx.message);
-    await deleteLastMessage(ctx.chat.id);
+    addUserMessage(ctx, ctx.message);
+    await deleteLastMessage(ctx);
 
     const message = await ctx.reply(t(`This bot was made by @volodymyr198`, ctx));
-    messages.push(message);
+    addUserMessage(ctx, message);
 });
 
 bot.hears(makeLocaleTriggers(`API`), async ctx => {
-    messages.push(ctx.message);
-    await deleteLastMessage(ctx.chat.id)
+    addUserMessage(ctx, ctx.message);
+    await deleteLastMessage(ctx)
 
     const message = await ctx.replyWithHTML(t(`This bot uses <b>Cryptocompare API</b>`, ctx));
-    messages.push(message);
+    addUserMessage(ctx, message);
 });
 
 bot.hears(makeLocaleTriggers(`Remove Keyboard`), async ctx => {
-    messages.push(ctx.message);
-    await deleteLastMessage(ctx.chat.id);
+    addUserMessage(ctx, ctx.message);
+    await deleteLastMessage(ctx);
 
     const message = await bot.telegram.sendMessage(ctx.chat.id, t(`Removed keyboard`, ctx),
         {
@@ -247,29 +241,8 @@ bot.hears(makeLocaleTriggers(`Remove Keyboard`), async ctx => {
         }
     );
 
-    messages.push(message);
-    await deleteLastMessage(ctx.chat.id);
+    addUserMessage(ctx, message);
+    await deleteLastMessage(ctx);
 });
 
 bot.launch();
-
-async function clearMessages(chat_id) {
-    try {
-        await Promise.all(messages.map(msg => bot.telegram.deleteMessage(chat_id, msg.message_id)));
-        messages = [];
-
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-async function deleteLastMessage(chat_id) {
-    const lastMessage = messages.pop();
-    if (!lastMessage) return;
-
-    try {        
-        await bot.telegram.deleteMessage(chat_id, lastMessage.message_id);        
-    } catch (error) {
-        console.log(error);
-    }
-}

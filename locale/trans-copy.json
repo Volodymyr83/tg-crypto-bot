@@ -2,9 +2,7 @@
     {
         "en": "Start Bot",
         "uk": "Стартувати Бот",
-        "ru": "Стартовать Бот",
-        "[object Map]": "Start Bot",
-        "function get() { [native code] }": "Start Bot"
+        "ru": "Стартовать Бот"
     },
     {
         "en": "Credits",
