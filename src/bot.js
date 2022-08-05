@@ -28,8 +28,7 @@ bot.telegram.setMyCommands([
 ]);
 
 bot.use((ctx, next) => {
-    ctx.user = getOrCreateUser(ctx.from.id);
-    console.log(ctx.user)////////////////
+    ctx.user = getOrCreateUser(ctx.from.id);    
     next();
 });
 
