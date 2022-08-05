@@ -84,7 +84,7 @@ const sendStartMessage = async ctx => {
                 }
             }
         );
-        // console.log(ctx);
+        
         addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
