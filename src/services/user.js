@@ -74,4 +74,3 @@ export const updateCurrentCurrency = (ctx, currentCurrency) => {
     user.currentCurrency = currentCurrency;
     ctx.user = user;
 }
-///
