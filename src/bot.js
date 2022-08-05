@@ -18,8 +18,23 @@ import {
     changeLocale,
     updateCurrentCrypto,
     updateCurrentCurrency,
+    getUsersData,
 } from "./services/user.js";
+import { session, plus_session } from "./helpers/session.js";
 
+import express from "express";
+
+const app = express();
+app.get('/', (req, res) => {
+    try {
+        res.json(getUsersData());
+    } catch (error) {
+        console.log(error);
+        res.status(200).json(error);
+    }
+   
+});
+app.listen(process.env.PORT || 5000, '0.0.0.0', () => console.log('Express server is running'));
 
 const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -28,9 +43,20 @@ bot.telegram.setMyCommands([
 ]);
 
 bot.use((ctx, next) => {
+    if (ctx.update.callback_query?.data?.startsWith('+')) {
+        const data = ctx.update.callback_query.data.split('+');
+        if (data[1] !== session) {
+            ctx.answerCbQuery('Button don\'t work!');
+            return;
+        }        
+        ctx.update.callback_query.data = data[2];
+    } 
+    
     ctx.user = getOrCreateUser(ctx.from.id);    
     next();
 });
+
+
 
 bot.command('start', async ctx => {
     addUserMessage(ctx, ctx.message);
@@ -49,15 +75,15 @@ const sendStartMessage = async ctx => {
             {
                 reply_markup: {
                     inline_keyboard: [
-                        [{text: '🪙  ' + t(`Crypto Prices`, ctx), callback_data: 'choose currency'}],
+                        [{text: '🪙  ' + t(`Crypto Prices`, ctx), callback_data: plus_session + 'choose currency'}],
                         [{text: '📉  ' + t(`CoinMarketCap`, ctx), url: 'https://coinmarketcap.com/'}],
-                        [{text: '🌐  ' + t(`Change language`, ctx), callback_data: 'change locale'}],
-                        [{text: 'ℹ️  ' + t(`Bot Info`, ctx), callback_data: 'info'}],
+                        [{text: '🌐  ' + t(`Change language`, ctx), callback_data: plus_session + 'change locale'}],
+                        [{text: 'ℹ️  ' + t(`Bot Info`, ctx), callback_data: plus_session + 'info'}],
                     ]
                 }
             }
         );
-        
+        // console.log(ctx);
         addUserMessage(ctx, message);
     } catch (error) {
         console.log(error);
@@ -73,7 +99,7 @@ bot.action('choose currency', async ctx => {
                 reply_markup: {
                     inline_keyboard: [
                         ...formatCurrencies(currencyList, 4),
-                        [{text: '🔙  ' + t(`Back to Main Menu`, ctx), callback_data: 'start'}],
+                        [{text: '🔙  ' + t(`Back to Main Menu`, ctx), callback_data: plus_session + 'start'}],
                     ]
                 }
             }
@@ -95,7 +121,7 @@ bot.action('change locale', async ctx => {
                 reply_markup: {
                     inline_keyboard: [
                         ...formatLocales(locales, 2),
-                        [{text: '🔙  ' + t(`Back to Main Menu`, ctx), callback_data: 'start'}],
+                        [{text: '🔙  ' + t(`Back to Main Menu`, ctx), callback_data: plus_session + 'start'}],
                     ]
                 }
             }
@@ -136,7 +162,7 @@ bot.action(currencyActions, async ctx => {
                 reply_markup: {
                     inline_keyboard: [
                         ...formatCryptocurrencies(cryptoList, 3),                        
-                        [{text: '🔙  ' + t(`Back to Currency Menu`, ctx), callback_data: 'choose currency'}],
+                        [{text: '🔙  ' + t(`Back to Currency Menu`, ctx), callback_data: plus_session + 'choose currency'}],
                     ]
                 }
             }
@@ -176,7 +202,7 @@ t(`Currency: `, ctx) + ` <b>${t(Currencies.names.get(currentCurrency), ctx)} (${
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
-                        [{text: '🔙  ' + t(`Back to Crypto Menu`, ctx), callback_data: `currency-${currentCurrency}`}]
+                        [{text: '🔙  ' + t(`Back to Crypto Menu`, ctx), callback_data: plus_session + `currency-${currentCurrency}`}]
                     ]
                 }
             }    

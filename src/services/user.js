@@ -1,5 +1,3 @@
-
-
 const usersData = new Map();
 
 export const getOrCreateUser = user_id => { 
@@ -74,3 +72,13 @@ export const updateCurrentCurrency = (ctx, currentCurrency) => {
     user.currentCurrency = currentCurrency;
     ctx.user = user;
 }
+
+export const getUsersData = () => {
+    const data = Array.from(usersData.values());
+    return data.map( user => ({
+        id: user.id,
+        locale: user.locale,
+        currentCurrency: user.currentCurrency,
+        currentCrypto: user.currentCrypto,
+    }));
+} 
