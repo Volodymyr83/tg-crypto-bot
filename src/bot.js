@@ -43,16 +43,17 @@ bot.telegram.setMyCommands([
 ]);
 
 bot.use((ctx, next) => {
+    ctx.user = getOrCreateUser(ctx.from.id);
+
     if (ctx.update.callback_query?.data?.startsWith('+')) {
         const data = ctx.update.callback_query.data.split('+');
         if (data[1] !== session) {
-            ctx.answerCbQuery('Button don\'t work!');
+            ctx.answerCbQuery(t(`Button is not active`, ctx));
             return;
         }        
         ctx.update.callback_query.data = data[2];
-    } 
-    
-    ctx.user = getOrCreateUser(ctx.from.id);    
+    }
+
     next();
 });
 
